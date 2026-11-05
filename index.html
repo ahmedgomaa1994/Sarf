@@ -26,8 +26,8 @@ input,select,textarea{width:100%;font:inherit;padding:11px;min-height:46px;borde
 .g{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .row{padding:10px 0;border-bottom:1px solid var(--bd)}.m{color:var(--mut);font-size:14px}
 .tag{padding:2px 10px;border-radius:12px;font-size:13px;color:#fff}.w{background:var(--wn)}.o{background:var(--ok)}.e{background:var(--er)}
-nav{position:fixed;bottom:0;inset-inline:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom)}
-nav button{flex:1;min-height:56px;border:0;background:none;color:var(--mut);font:inherit}nav button.on{color:var(--p);font-weight:800}
+nav{overflow-x:auto;position:fixed;bottom:0;inset-inline:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1 0 auto;padding:0 12px;min-height:56px;border:0;background:none;color:var(--mut);font:inherit}nav button.on{color:var(--p);font-weight:800}
 .bad{color:var(--er);border-color:var(--er)}pre{white-space:pre-wrap;direction:ltr;text-align:left;font-size:12px}
 #pv{position:fixed;inset:0;background:#fff;color:#000;z-index:50;overflow:auto;padding:12px}#pv table{width:100%;border-collapse:collapse}#pv td,#pv th{border:1px solid #888;padding:6px;text-align:start}@media print{body>*:not(#pv){display:none!important}.np{display:none!important}}
 </style>
@@ -42,7 +42,7 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const ROLES={gm:'المدير العام',rq:'مدير الرقابة',ctl:'مدير التحكم',col:'مدير التحصيل',lic:'مدير التراخيص',insp:'فريق المعاينات'};
 const ST={pending:['في الانتظار','w'],pass:['مطابقة','o'],fail:['غير مطابقة','e']};
-let me=null,BR=[],LIM={},V='fac',FEE={},TIERS=[],MF={k:null,fid:null};
+let me=null,BR=[],LIM={},V='fac',FEE={},TIERS=[],MF={k:null,fid:null},PRE=null,LINK=null;
 const today=()=>new Date().toISOString().slice(0,10);
 const rnd=()=>Array.from({length:4},()=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random()*32)]).join('');
 const err=e=>alert('خطأ: '+(e.message||e));
@@ -66,9 +66,9 @@ async function out(){await sb.auth.signOut();me=null;loginUI()}
 
 function shell(body){
   $('#app').innerHTML=`<header><b>${esc(me.full_name)} · ${ROLES[me.role]}</b><button onclick="out()">خروج</button></header><main>${body}</main>
-  <nav>${[['fac','المنشآت'],['new','معاينة'],['samp','العينات'],['cl','المطالبات'],['col','التحصيل']].filter(x=>x[0]!=='col'||['gm','rq','ctl','col'].includes(me.role)).map(([k,t])=>`<button class="${k==V?'on':''}" onclick="go('${k}')">${t}</button>`).join('')}</nav>`}
+  <nav>${[['fac','المنشآت'],['new','معاينة'],['samp','العينات'],['cl','المطالبات'],['col','التحصيل'],['plan','الخطة'],['lic','التراخيص']].filter(x=>(x[0]!=='col'||['gm','rq','ctl','col'].includes(me.role))&&(x[0]!=='lic'||['gm','rq','lic'].includes(me.role))).map(([k,t])=>`<button class="${k==V?'on':''}" onclick="go('${k}')">${t}</button>`).join('')}</nav>`}
 async function go(v,arg){V=v;shell('<p class="m">جارٍ التحميل…</p>');
-  try{shell(await R[v](arg))}catch(e){shell(`<div class="c bad">${esc(e.message||e)}</div>`)}}
+  try{shell(await R[v](arg));if(v==='new'&&PRE){Object.entries(PRE).forEach(([k,x])=>{const e=$('#'+k);if(e)e.value=x});PRE=null}}catch(e){shell(`<div class="c bad">${esc(e.message||e)}</div>`)}}
 
 const R={
 async fac(){const{data,error}=await sb.from('facilities').select('id,code,name,address,classification,branch_id,monthly_water_m3').is('deleted_at',null).order('registered_at',{ascending:false}).limit(200);
@@ -107,7 +107,7 @@ async function saveInsp(){try{
   if(f){if(!confirm('المنشأة مسجلة سابقاً، هل تريد ربط المعاينة بها؟'))return}
   else{const{data:code,error:e1}=await sb.rpc('next_facility_code',{b:br});if(e1)throw e1;
     const{data,error}=await sb.from('facilities').insert({code,branch_id:br,name:v('nm'),address:v('ad'),owner_name:v('ow'),classification:v('cl'),activity:v('ac'),water_source:v('ws'),customer_account:v('ca')||null,discharge_type:v('dt'),connection_type:v('cn'),monthly_water_m3:+v('wm')||null}).select('id,code').single();if(error)throw error;f=data}
-  const{data:ins,error:e2}=await sb.from('inspections').insert({facility_id:f.id,reason:v('rs'),branch_id:br,inspector_id:me.id,status:'approved',notes:v('nt')}).select('id').single();if(e2)throw e2;
+  const{data:ins,error:e2}=await sb.from('inspections').insert({facility_id:f.id,reason:v('rs'),branch_id:br,inspector_id:me.id,status:'approved',notes:v('nt'),license_request_id:LINK}).select('id').single();if(e2)throw e2;LINK=null;
   const t=[...document.querySelectorAll('.st')].map(e=>e.value),o=[...document.querySelectorAll('.so')].map(e=>e.value);
   if(t.length){const d=today().replace(/-/g,'').slice(2);const{error:e3}=await sb.from('samples').insert(t.map((x,i)=>({code:`${b.code}-${d}-${rnd()}`,inspection_id:ins.id,facility_id:f.id,sample_type:x,outlet:o[i]})));if(e3)throw e3}
   alert('تم الحفظ. كود المنشأة: '+f.code);go('fac')}catch(e){err(e)}}
@@ -215,6 +215,77 @@ async pd(id){const{data:c,error}=await sb.from('claims').select('*,facilities(na
  return`<button class="btn s" onclick="go('col')">رجوع</button><div class="c"><h3>${TL[c.type]} #${c.serial} <span class="tag ${s[1]}">${s[0]}</span></h3><span class="m">${esc(c.facilities.name)}</span><div class="row">الإجمالي ${fm(c.total)}<br>المحصَّل ${fm(paid)}<br><b>المتبقي ${fm(rem)}</b></div>${(P||[]).map(p=>`<div class="row m">${p.paid_on}، ${esc(p.method)}، ${fm(p.amount)}${p.receipt_no?'، إيصال '+esc(p.receipt_no):''}</div>`).join('')}</div>
  ${canPay()&&rem>0?`<div class="c"><h3>تسجيل تحصيل</h3><label>المبلغ (حد أقصى ${fm(rem)})</label><input id="pa" type="number" step="any" value="${rem}"><div class="g"><div><label>التاريخ</label><input id="pd" type="date" value="${today()}"></div><div><label>طريقة الدفع</label><select id="pm">${MTH.map(m=>`<option>${m}</option>`).join('')}</select></div></div><label>رقم الإيصال / الشيك</label><input id="pn"><label>ملاحظات</label><input id="pt"><button class="btn" onclick="recPay('${id}')">تسجيل</button></div>`:''}`},
 async rep(){return`<button class="btn s" onclick="go('col')">رجوع</button><div class="c"><h3>تقرير التحصيل</h3><div class="g"><select onchange="RP.t=this.value;go('rep')">${[['m','شهري'],['q','ربع سنوي'],['y','سنوي']].map(x=>`<option value="${x[0]}" ${x[0]===RP.t?'selected':''}>${x[1]}</option>`).join('')}</select><input type="date" value="${RP.d}" onchange="RP.d=this.value;go('rep')"></div></div><div class="c">${await repHtml(RP.t,RP.d)}</div><button class="btn" onclick="prtRep()">معاينة الطباعة PDF</button>`}});
+
+/* ===== الخطة والتراخيص ===== */
+const RD=['سجل تجاري','بطاقة ضريبية','عقد ملكية/إيجار','رخصة تشغيل','صور'],PS={'مجدول':'w','تم':'o','مؤجل':'w','لم يتم':'e'},PRI={'قصوى':'e','عالية':'w','متوسطة':'o'};
+const lrole=(...r)=>me.role==='gm'||r.includes(me.role),lclosed=l=>['تم لا مانع','مرفوض'].includes(l.status),addDays=(d,n)=>new Date(Date.parse(d)+n*864e5).toISOString().slice(0,10);
+async function planUpd(id,st){const{error}=await sb.from('plan_items').update({status:st}).eq('id',id);if(error)return err(error);go('plan')}
+async function planDel(id){if(!confirm('حذف البند؟'))return;const{error}=await sb.from('plan_items').delete().eq('id',id);if(error)return err(error);go('plan')}
+async function addPlan(){try{const f=$('#pf').value,d=$('#pdt').value;if(!f||!d)return alert('اختر المنشأة والتاريخ');const{data:fa}=await sb.from('facilities').select('branch_id').eq('id',f).single();
+ const{error}=await sb.from('plan_items').insert({plan_date:d,facility_id:f,branch_id:fa.branch_id,inspector_id:$('#pi').value||null,priority:$('#pp').value,reason:$('#pr').value||'خطة الإدارة'});if(error)throw error;go('plan')}catch(e){err(e)}}
+async function autoPlan(){try{
+ const[F,S,I,P]=await Promise.all([sb.from('facilities').select('id,branch_id,registered_at').is('deleted_at',null),sb.from('samples').select('facility_id,status,collected_on').order('collected_on',{ascending:false}),sb.from('inspections').select('facility_id,inspected_on').eq('status','approved'),sb.from('plan_items').select('facility_id,status')]);
+ [F,S,I,P].forEach(x=>{if(x.error)throw x.error});const last={},seen={},insp={},any=new Set(P.data.map(x=>x.facility_id)),sched=new Set(P.data.filter(x=>x.status==='مجدول').map(x=>x.facility_id));
+ S.data.forEach(s=>{if(!(s.facility_id in last)&&s.status!=='pending')last[s.facility_id]=s.status});I.data.forEach(i=>{if(!insp[i.facility_id]||i.inspected_on>insp[i.facility_id])insp[i.facility_id]=i.inspected_on});
+ const rows=[];F.data.forEach(f=>{if(sched.has(f.id))return;const age=(Date.now()-new Date(f.registered_at))/864e5,li=insp[f.id];let pri,rs;
+  if(!any.has(f.id)&&age<=(+FEE.recent_facility_days||90)){pri='قصوى';rs='منشأة حديثة غير مدرجة بخطة'}
+  else if(last[f.id]==='fail'){pri='عالية';rs='عينة غير مطابقة: إعادة معاينة'}
+  else if(li&&(Date.now()-new Date(li))/864e5>(+FEE.revisit_months||6)*30){pri='متوسطة';rs='لم تُزَر منذ أكثر من '+(FEE.revisit_months||6)+' أشهر'}
+  if(pri)rows.push({facility_id:f.id,branch_id:f.branch_id,priority:pri,reason:rs})});
+ const o={'قصوى':0,'عالية':1,'متوسطة':2};rows.sort((a,b)=>o[a.priority]-o[b.priority]);
+ if(!rows.length)return alert('لا توجد بنود جديدة مستحقة');
+ const{error}=await sb.from('plan_items').insert(rows.map((r,i)=>({...r,plan_date:addDays(today(),1+i%5)})));if(error)throw error;alert('أُضيفت '+rows.length+' بنود. عدّل التاريخ أو احذف ما لا يلزم.');go('plan')}catch(e){err(e)}}
+async function hist(id,t){await sb.from('license_history').insert({request_id:id,actor:me.id,note:t})}
+async function lset(id,st,note,x){const{error}=await sb.from('license_requests').update({status:st,...x}).eq('id',id);if(error)throw error;await hist(id,note||st)}
+async function lDocs(id){try{const o={};document.querySelectorAll('.ld').forEach(e=>o[e.dataset.n]=e.checked);const{error}=await sb.from('license_requests').update({docs:o}).eq('id',id);if(error)throw error}catch(e){err(e)}}
+async function mkL(){try{const g=i=>$('#'+i).value.trim();if(!g('ln')||!g('lo'))return alert('اسم المنشأة والمالك إجباريان');
+ const{data,error}=await sb.from('license_requests').insert({facility_name:g('ln'),address:g('la'),branch_id:+g('lb'),owner_name:g('lo'),tenant_name:g('lt'),classification:g('lc'),request_no:g('lr'),incoming_no:g('li'),incoming_date:g('ld')||null,applicant:g('lp'),applicant_phone:g('lh'),status:'جديد'}).select('id').single();if(error)throw error;await hist(data.id,'تم الاستقبال');go('ld',data.id)}catch(e){err(e)}}
+async function lact(id,a){try{const{data:l}=await sb.from('license_requests').select('*').eq('id',id).single();
+ if(a==='chk')await lset(id,'قيد فحص المستندات','بدء فحص المستندات');
+ else if(a==='ok'){if(!RD.every(d=>l.docs&&l.docs[d]))return alert('لم تُستوفَ كل المستندات');await lset(id,'مستوفٍ','المستندات مستوفاة')}
+ else if(a==='miss')await lset(id,'ناقص','مستندات ناقصة');
+ else if(a==='ref')await lset(id,'محال للرقابة','إحالة لإدارة الرقابة');
+ else if(a==='ret'){const w=prompt('السبب');if(!w)return;await lset(id,'ناقص','إعادة للتراخيص بنواقص: '+w)}
+ else if(a==='rej'){const w=prompt('سبب الرفض');if(!w)return;await lset(id,'مرفوض','رفض: '+w,{reject_reason:w})}
+ else if(a==='plan'){const d=$('#lpd').value;if(!d)return alert('حدد التاريخ');const{error}=await sb.from('plan_items').insert({plan_date:d,license_request_id:id,branch_id:l.branch_id,inspector_id:$('#lpi').value||null,priority:'قصوى',reason:'طلب توصيل'});if(error)throw error;await lset(id,'معتمد ومدرج بالخطة','اعتماد وإدراج بالخطة ('+d+')')}
+ else if(a==='form'){PRE={nm:l.facility_name,ad:l.address||'',ow:l.owner_name,cl:l.classification||'',br:String(l.branch_id),rs:'طلب توصيل'};LINK=id;return go('new')}
+ else{const{data:x}=await sb.from('inspections').select('id,facilities(connection_type)').eq('license_request_id',id).eq('status','approved').limit(1);if(!x||!x.length)return alert('لا توجد معاينة معتمدة مرتبطة بهذا الطلب. افتح الاستمارة من هنا واعتمدها أولاً.');
+  if(a==='insp')await lset(id,'تمت المعاينة','تمت المعاينة واعتمدت');
+  else{const ct=x[0].facilities&&x[0].facilities.connection_type;if(!['على الشبكة','كسح تابع للشركة'].includes(ct))return alert('جهة التوصيل لا تسمح بإصدار لا مانع');
+   const{data:n,error}=await sb.rpc('next_noobj_serial');if(error)throw error;await lset(id,'تم لا مانع','صدر لا مانع من التوصيل رقم '+n,{no_objection_serial:n});return prtLic(id)}}
+ go('ld',id)}catch(e){err(e)}}
+async function prtLic(id){const{data:l}=await sb.from('license_requests').select('*').eq('id',id).single(),b=BR.find(x=>x.id===l.branch_id);let d=document.getElementById('pv');if(!d){d=document.createElement('div');d.id='pv';document.body.appendChild(d)}
+ d.innerHTML=`<div class="np g"><button class="btn" onclick="window.print()">طباعة / حفظ PDF</button><button class="btn s" onclick="this.closest('#pv').remove()">إغلاق</button></div><div dir="rtl" style="padding:8mm;font-family:Cairo,Tahoma,sans-serif"><h2 style="text-align:center">إدارة الرقابة على الصرف الصناعي</h2><h3 style="text-align:center">نموذج لا مانع من التوصيل رقم ${l.no_objection_serial||'-'}</h3><p>التاريخ: ${today()}<br>المنشأة: ${esc(l.facility_name)}<br>العنوان: ${esc(l.address||'-')}، فرع ${esc(b&&b.name)}<br>المالك: ${esc(l.owner_name)}، التصنيف: ${esc(l.classification||'-')}<br>رقم الطلب: ${esc(l.request_no||'-')}، الوارد: ${esc(l.incoming_no||'-')}</p><p>لا مانع من توصيل صرف المنشأة المذكورة وفقاً للقانون 93 لسنة 1962 ولائحته التنفيذية 44 لسنة 2000.</p><p style="margin-top:40mm">التوقيع: ........ &nbsp;&nbsp; الختم: ........</p></div>`}
+async function twDue(id){try{const{data:c}=await sb.from('claims').select('facility_id,branch_id').eq('id',id).single(),{data:L}=await sb.from('claim_lines').select('description,measured').eq('claim_id',id);
+ const mo=x=>{const v=+x.measured;if(x.description==='pH')return v<2||v>12?.25:.5;const t=TIERS.find(t=>t.param===x.description&&v>+t.from_value&&(t.to_value==null||v<=+t.to_value));return t?(t.grace_unit==='month'?+t.grace_value:+t.grace_value/4):1};
+ const best=L.map(x=>({k:x.description,m:mo(x)})).sort((a,b)=>a.m-b.m)[0],days=best.m<1?Math.round(best.m*28):Math.round(best.m*30),dl=$('#dl').value,due=addDays(dl,days);
+ const{error}=await sb.from('claims').update({delivered_on:dl,delivered_to:$('#dn').value}).eq('id',id);if(error)throw error;
+ const{error:e2}=await sb.from('plan_items').insert({plan_date:due,facility_id:c.facility_id,branch_id:c.branch_id,priority:'عالية',reason:'متابعة توفيق أوضاع (أقصر مهلة: '+best.k+')'});if(e2)throw e2;alert('الاستحقاق '+due+' (أقصر مهلة: '+best.k+')');go('cd',id)}catch(e){err(e)}}
+async function reIns(id){try{const{data:c}=await sb.from('claims').select('facility_id').eq('id',id).single();await sb.from('claims').update({reinspected_on:today()}).eq('id',id);await sb.from('plan_items').update({status:'تم'}).eq('facility_id',c.facility_id).like('reason','متابعة توفيق أوضاع%').eq('status','مجدول');go('cd',id)}catch(e){err(e)}}
+const cd0=R.cd;R.cd=async id=>{let x=await cd0(id);const{data:c}=await sb.from('claims').select('type,delivered_on,delivered_to,reinspected_on').eq('id',id).single();
+ if(c.type==='compliance_notice'&&['gm','rq','ctl'].includes(me.role)){
+  if(!c.delivered_on)x+=`<div class="c"><h3>تسجيل تسليم النموذج</h3><div class="g"><input id="dl" type="date" value="${today()}"><input id="dn" placeholder="اسم المستلم"></div><button class="btn" onclick="twDue('${id}')">تسجيل التسليم وإدراج المتابعة بالخطة</button></div>`;
+  else x+=`<div class="c m">سُلّم ${c.delivered_on} إلى ${esc(c.delivered_to||'-')}${c.reinspected_on?'، أُعيدت المعاينة '+c.reinspected_on:''}</div>${c.reinspected_on?'':`<button class="btn s" onclick="reIns('${id}')">تمت إعادة المعاينة</button>`}`}
+ return x};
+Object.assign(R,{
+async plan(){const q=sb.from('plan_items').select('*,facilities(name),license_requests(facility_name),profiles(full_name)').order('plan_date');if(me.role==='insp'&&me.branch_id)q.eq('branch_id',me.branch_id);const{data:P,error}=await q;if(error)throw error;
+ const done=P.filter(p=>p.status==='تم').length,adm=lrole('rq');let F=[],I=[];
+ if(adm){F=(await sb.from('facilities').select('id,name,code').is('deleted_at',null).order('name')).data||[];I=(await sb.from('profiles').select('id,full_name').eq('role','insp').eq('active',true)).data||[]}
+ return`<div class="c"><h3>خطة العمل</h3><span class="m">الإنجاز ${P.length?Math.round(done/P.length*100):0}% (${done} من ${P.length})</span>${adm?'<button class="btn" onclick="autoPlan()">إنشاء خطة تلقائية</button>':''}</div>
+ ${adm?`<div class="c"><h3>إضافة بند</h3><select id="pf"><option value="">المنشأة</option>${F.map(f=>`<option value="${f.id}">${esc(f.name)} (${esc(f.code)})</option>`).join('')}</select><div class="g"><input id="pdt" type="date" value="${addDays(today(),1)}"><select id="pi"><option value="">المعاين</option>${I.map(i=>`<option value="${i.id}">${esc(i.full_name)}</option>`).join('')}</select><select id="pp">${Object.keys(PRI).map(x=>`<option>${x}</option>`).join('')}</select><input id="pr" placeholder="السبب"></div><button class="btn s" onclick="addPlan()">إضافة</button></div>`:''}
+ ${P.map(p=>`<div class="c"><b>${esc((p.facilities&&p.facilities.name)||(p.license_requests&&p.license_requests.facility_name)||'-')}</b> <span class="tag ${PRI[p.priority]||'w'}">${esc(p.priority||'')}</span><br><span class="m">${p.plan_date}، ${esc(p.reason||'')}${p.profiles?'، '+esc(p.profiles.full_name):''}</span>${adm?`<select onchange="planUpd('${p.id}',this.value)">${Object.keys(PS).map(s=>`<option ${s===p.status?'selected':''}>${s}</option>`).join('')}</select><button class="btn s" onclick="planDel('${p.id}')">حذف البند</button>`:`<br><span class="tag ${PS[p.status]}">${p.status}</span>`}</div>`).join('')||'<div class="c m">لا توجد بنود</div>'}`},
+async lic(){const{data,error}=await sb.from('license_requests').select('id,facility_name,status,created_at,branch_id').is('deleted_at',null).order('created_at',{ascending:false});if(error)throw error;
+ const late=l=>!lclosed(l)&&(Date.now()-new Date(l.created_at))/864e5>(+FEE.license_late_days||7);
+ return`${lrole('lic')?'<button class="btn" onclick="go(\'ln\')">طلب جديد</button>':''}<div class="c" style="margin-top:12px">${data.map(l=>`<div class="row" onclick="go('ld','${l.id}')"><b>${esc(l.facility_name)}</b> <span class="tag ${l.status==='تم لا مانع'?'o':l.status==='مرفوض'?'e':'w'}">${l.status}</span>${late(l)?' <span class="tag e">متأخر</span>':''}<br><span class="m">${esc((BR.find(b=>b.id===l.branch_id)||{}).name)}، ${l.created_at.slice(0,10)}</span></div>`).join('')||'<span class="m">لا توجد طلبات</span>'}</div>`},
+async ln(){const o=a=>a.map(x=>`<option>${x}</option>`).join('');return`<button class="btn s" onclick="go('lic')">رجوع</button><div class="c"><h3>طلب توصيل جديد</h3><label>اسم المنشأة *</label><input id="ln"><label>العنوان</label><input id="la"><label>الفرع</label><select id="lb">${BR.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('')}</select><label>المالك *</label><input id="lo"><label>المستأجر</label><input id="lt"><label>التصنيف</label><select id="lc">${o(['تجارية','صناعية','أخرى'])}</select><div class="g"><div><label>رقم الطلب</label><input id="lr"></div><div><label>رقم الوارد</label><input id="li"></div><div><label>تاريخ الوارد</label><input id="ld" type="date"></div><div><label>مقدم الطلب</label><input id="lp"></div></div><label>هاتفه</label><input id="lh" type="tel"><button class="btn" onclick="mkL()">حفظ الطلب</button></div>`},
+async ld(id){const{data:l,error}=await sb.from('license_requests').select('*').eq('id',id).single();if(error)throw error;const{data:H}=await sb.from('license_history').select('note,at,profiles(full_name)').eq('request_id',id).order('at',{ascending:false}),s=l.status,B=(a,t,ok)=>ok?`<button class="btn" onclick="lact('${id}','${a}')">${t}</button>`:'';
+ const ed=lrole('lic')&&['جديد','قيد فحص المستندات','ناقص'].includes(s);let I=[];if(s==='محال للرقابة'&&lrole('rq'))I=(await sb.from('profiles').select('id,full_name').eq('role','insp').eq('active',true)).data||[];
+ return`<button class="btn s" onclick="go('lic')">رجوع</button><div class="c"><h3>${esc(l.facility_name)} <span class="tag ${s==='تم لا مانع'?'o':s==='مرفوض'?'e':'w'}">${s}</span></h3><span class="m">${esc((BR.find(b=>b.id===l.branch_id)||{}).name)}، المالك: ${esc(l.owner_name)}<br>طلب ${esc(l.request_no||'-')}، وارد ${esc(l.incoming_no||'-')}${l.reject_reason?'<br>سبب الرفض: '+esc(l.reject_reason):''}</span></div>
+ <div class="c"><h3>المستندات</h3>${RD.map(d=>`<label style="display:flex;gap:8px;align-items:center;color:var(--fg)"><input type="checkbox" class="ld" data-n="${d}" style="width:24px;min-height:24px" ${l.docs&&l.docs[d]?'checked':''} ${ed?'':'disabled'} onchange="lDocs('${id}')">${d}</label>`).join('')}</div>
+ ${B('chk','بدء فحص المستندات',lrole('lic')&&['جديد','ناقص'].includes(s))}${B('ok','مستوفٍ',lrole('lic')&&s==='قيد فحص المستندات')}${B('miss','ناقص',lrole('lic')&&s==='قيد فحص المستندات')}${B('ref','إحالة لإدارة الرقابة',lrole('lic')&&s==='مستوفٍ')}
+ ${s==='محال للرقابة'&&lrole('rq')?`<div class="c"><h3>قرار الرقابة</h3><div class="g"><input id="lpd" type="date" value="${addDays(today(),1)}"><select id="lpi"><option value="">المعاين</option>${I.map(i=>`<option value="${i.id}">${esc(i.full_name)}</option>`).join('')}</select></div>${B('plan','اعتماد وإدراج بالخطة',1)}${B('ret','إعادة للتراخيص بنواقص',1)}${B('rej','رفض',1)}</div>`:''}
+ ${B('form','فتح استمارة معاينة مملوءة',lrole('rq','insp')&&s==='معتمد ومدرج بالخطة')}${B('insp','تمت المعاينة (ربط آلي بالمعاينة المعتمدة)',lrole('rq')&&s==='معتمد ومدرج بالخطة')}${B('ok2','إصدار لا مانع من التوصيل',lrole('rq')&&s==='تمت المعاينة')}${s==='تم لا مانع'?`<button class="btn s" onclick="prtLic('${id}')">طباعة نموذج لا مانع (PDF)</button>`:''}
+ <div class="c" style="margin-top:12px"><h3>سجل الحركة</h3>${(H||[]).map(x=>`<div class="row m">${new Date(x.at).toLocaleString('ar-EG')}، ${esc(x.profiles&&x.profiles.full_name)}<br>${esc(x.note)}</div>`).join('')}</div>`}});
 
 loadSB(function(){sb=supabase.createClient(SB_URL,SB_KEY);boot()});
 </script>
