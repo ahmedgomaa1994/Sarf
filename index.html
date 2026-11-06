@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>الرقابة على الصرف الصناعي</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+<script>
+window.onerror=function(m){var a=document.getElementById('app');if(a)a.insertAdjacentHTML('afterbegin','<div style="padding:12px;color:#c0392b;direction:ltr">'+m+'</div>')};
+var SBU=['https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js','https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js','https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/supabase.min.js'];
+function loadSB(cb,i){i=i||0;if(window.supabase)return cb();if(i>=SBU.length){document.getElementById('app').innerHTML='<div style="padding:16px">تعذر تحميل مكتبة Supabase. تأكد من الإنترنت أو جرّب شبكة أخرى.</div>';return}var s=document.createElement('script');s.src=SBU[i];s.onload=function(){window.supabase?cb():loadSB(cb,i+1)};s.onerror=function(){loadSB(cb,i+1)};document.head.appendChild(s)}
+</script>
+<style>
+:root{--bg:#f4f6fa;--fg:#14233a;--p:#1b3a63;--pf:#fff;--card:#fff;--bd:#d5dce8;--ok:#1d7a46;--wn:#b7791f;--er:#c0392b;--mut:#5b6b82}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1522;--fg:#e6ecf5;--p:#5b8bd0;--pf:#08111f;--card:#16202f;--bd:#2a3850;--ok:#48c27c;--wn:#e0a840;--er:#ef6b5b;--mut:#9aa9c0}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:Cairo,Tahoma,sans-serif;font-size:16px;padding:env(safe-area-inset-top) 0 80px}
+header{background:var(--p);color:var(--pf);padding:10px 14px;display:flex;align-items:center;gap:8px}
+header b{flex:1}header button{background:none;border:1px solid var(--pf);color:var(--pf);border-radius:8px;padding:6px 10px;font:inherit}
+main{padding:12px;max-width:720px;margin:auto}
+.c{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:12px}
+label{display:block;font-size:14px;color:var(--mut);margin:8px 0 3px}
+input,select,textarea{width:100%;font:inherit;padding:11px;min-height:46px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:var(--fg)}
+.btn{display:block;width:100%;min-height:50px;border:0;border-radius:10px;background:var(--p);color:var(--pf);font:inherit;font-weight:600;margin-top:10px}
+.btn.s{background:none;color:var(--p);border:1px solid var(--p)}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.row{padding:10px 0;border-bottom:1px solid var(--bd)}.m{color:var(--mut);font-size:14px}
+.tag{padding:2px 10px;border-radius:12px;font-size:13px;color:#fff}.w{background:var(--wn)}.o{background:var(--ok)}.e{background:var(--er)}
+nav{overflow-x:auto;position:fixed;bottom:0;inset-inline:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1 0 auto;padding:0 12px;min-height:56px;border:0;background:none;color:var(--mut);font:inherit}nav button.on{color:var(--p);font-weight:800}
+.bad{color:var(--er);border-color:var(--er)}pre{white-space:pre-wrap;direction:ltr;text-align:left;font-size:12px}
+#pv{position:fixed;inset:0;background:#fff;color:#000;z-index:50;overflow:auto;padding:12px}#pv table{width:100%;border-collapse:collapse}#pv td,#pv th{border:1px solid #888;padding:6px;text-align:start}@media print{body>*:not(#pv){display:none!important}.np{display:none!important}}
+</style>
+</head>
+<body>
+<div id="app"><p style="padding:16px">جارٍ التحميل…</p></div>
+<script src="p1-core.js"></script>
+<script src="p2-facilities.js"></script>
+<script src="p3-claims.js"></script>
+<script src="p4-collection.js"></script>
+<script src="p5-plan-licenses.js"></script>
+<script src="p6-settings.js"></script>
+<script src="p7-registry-crews.js"></script>
+<script src="p8-inspection.js"></script>
+<script src="p9-facility-detail.js"></script>
+<script src="p10-samples-results.js"></script>
+<script src="p11-groundwater.js"></script>
+<script src="p12-dashboards.js"></script>
+<script src="p13-reports.js"></script>
+<script src="p14-permissions.js"></script>
+<script src="p15-attachments.js"></script>
+<script src="p16-offline.js"></script>
+<script>
+(function(){var EXP=['p1','p2','p3','p4','p5','p6','p7'],miss=EXP.filter(function(x){return (window.PARTS||[]).indexOf(x)<0});
+if(miss.length){document.body.insertAdjacentHTML('afterbegin','<div style="background:#c0392b;color:#fff;padding:10px;direction:rtl">أجزاء ناقصة لم تُرفع بعد: '+miss.join('، ')+'</div>')}
+loadSB(function(){sb=supabase.createClient(SB_URL,SB_KEY);boot()})})();
+</script>
+
+</body>
+</html>
